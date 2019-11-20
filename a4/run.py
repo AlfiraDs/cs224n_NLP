@@ -45,7 +45,6 @@ import sys
 import pickle
 import time
 
-
 from docopt import docopt
 from nltk.translate.bleu_score import corpus_bleu, sentence_bleu, SmoothingFunction
 from nmt_model import Hypothesis, NMT
@@ -162,7 +161,7 @@ def train(args: Dict):
 
             batch_size = len(src_sents)
 
-            example_losses = -model(src_sents, tgt_sents) # (batch_size,)
+            example_losses = -model(src_sents, tgt_sents)  # (batch_size,)
             batch_loss = example_losses.sum()
             loss = batch_loss / batch_size
 
@@ -187,10 +186,13 @@ def train(args: Dict):
                 print('epoch %d, iter %d, avg. loss %.2f, avg. ppl %.2f ' \
                       'cum. examples %d, speed %.2f words/sec, time elapsed %.2f sec' % (epoch, train_iter,
                                                                                          report_loss / report_examples,
-                                                                                         math.exp(report_loss / report_tgt_words),
+                                                                                         math.exp(
+                                                                                             report_loss / report_tgt_words),
                                                                                          cum_examples,
-                                                                                         report_tgt_words / (time.time() - train_time),
-                                                                                         time.time() - begin_time), file=sys.stderr)
+                                                                                         report_tgt_words / (
+                                                                                                     time.time() - train_time),
+                                                                                         time.time() - begin_time),
+                      file=sys.stderr)
 
                 train_time = time.time()
                 report_loss = report_tgt_words = report_examples = 0.
@@ -198,9 +200,11 @@ def train(args: Dict):
             # perform validation
             if train_iter % valid_niter == 0:
                 print('epoch %d, iter %d, cum. loss %.2f, cum. ppl %.2f cum. examples %d' % (epoch, train_iter,
-                                                                                         cum_loss / cum_examples,
-                                                                                         np.exp(cum_loss / cum_tgt_words),
-                                                                                         cum_examples), file=sys.stderr)
+                                                                                             cum_loss / cum_examples,
+                                                                                             np.exp(
+                                                                                                 cum_loss / cum_tgt_words),
+                                                                                             cum_examples),
+                      file=sys.stderr)
 
                 cum_loss = cum_examples = cum_tgt_words = 0.
                 valid_num += 1
@@ -208,7 +212,7 @@ def train(args: Dict):
                 print('begin validation ...', file=sys.stderr)
 
                 # compute dev. ppl and bleu
-                dev_ppl = evaluate_ppl(model, dev_data, batch_size=128)   # dev batch size can be a bit larger
+                dev_ppl = evaluate_ppl(model, dev_data, batch_size=128)  # dev batch size can be a bit larger
                 valid_metric = -dev_ppl
 
                 print('validation: iter %d, dev. ppl %f' % (train_iter, dev_ppl), file=sys.stderr)
@@ -293,7 +297,8 @@ def decode(args: Dict[str, str]):
             f.write(hyp_sent + '\n')
 
 
-def beam_search(model: NMT, test_data_src: List[List[str]], beam_size: int, max_decoding_time_step: int) -> List[List[Hypothesis]]:
+def beam_search(model: NMT, test_data_src: List[List[str]], beam_size: int, max_decoding_time_step: int) -> List[
+    List[Hypothesis]]:
     """ Run beam search to construct hypotheses for a list of src-language sentences.
     @param model (NMT): NMT Model
     @param test_data_src (List[List[str]]): List of sentences (words) in source language, from test set.
@@ -307,7 +312,8 @@ def beam_search(model: NMT, test_data_src: List[List[str]], beam_size: int, max_
     hypotheses = []
     with torch.no_grad():
         for src_sent in tqdm(test_data_src, desc='Decoding', file=sys.stdout):
-            example_hyps = model.beam_search(src_sent, beam_size=beam_size, max_decoding_time_step=max_decoding_time_step)
+            example_hyps = model.beam_search(src_sent, beam_size=beam_size,
+                                             max_decoding_time_step=max_decoding_time_step)
 
             hypotheses.append(example_hyps)
 
@@ -339,5 +345,37 @@ def main():
         raise RuntimeError('invalid run mode')
 
 
+def local_run():
+    args = {
+        '--cuda': False,
+        '--train-src': './en_es_data/train.es',
+        '--train-tgt': './en_es_data/train.en',
+        '--dev-src': './en_es_data/dev.es',
+        '--dev-tgt': './en_es_data/dev.en',
+        '--vocab': 'vocab.json',
+        '--seed': 0,  # seed [default: 0]
+        '--batch-size': 32,  # batch size [default: 32]
+        '--embed-size': 256,  # embedding size [default: 256]
+        '--hidden-size': 256,  # hidden size [default: 256]
+        '--clip-grad': 5.0,  # gradient clipping [default: 5.0]
+        '--log-every': 10,  # log every [default: 10]
+        '--max-epoch': 30,  # max epoch [default: 30]
+        '--input-feed': False,  # use input feeding
+        '--patience': 5,  # wait for how many iterations to decay learning rate [default: 5]
+        '--max-num-trial': 5,  # terminate training after how many trials [default: 5]
+        '--lr-decay': 0.5,  # learning rate decay [default: 0.5]
+        '--beam-size': 5,  # beam size [default: 5]
+        '--sample-size': 5,  # sample size [default: 5]
+        '--lr': 0.001,  # learning rate [default: 0.001]
+        '--uniform-init': 0.1,  # uniformly initialize all parameters [default: 0.1]
+        '--save-to': 'model.bin',  # model save path [default: model.bin]
+        '--valid-niter': 2000,  # perform validation after how many iterations [default: 2000]
+        '--dropout': 0.3,  # dropout [default: 0.3]
+        '--max-decoding-time-step': 70  # maximum number of decoding time steps [default: 70]
+    }
+    train(args)
+
+
 if __name__ == '__main__':
     main()
+    # local_run()
